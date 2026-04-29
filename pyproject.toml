@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "geometric-complexity-scaling"
+version = "0.1.0"
+description = "Experiments for residual-stream geometry across factual, sentiment, and math tasks."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "datasets>=2.19",
+  "matplotlib>=3.7",
+  "numpy>=1.24",
+  "pandas>=2.0",
+  "scikit-learn>=1.3",
+  "seaborn>=0.13",
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "tqdm>=4.66",
+  "transformers>=4.55",
+  "pytest>=8.0",
+]
+
+[project.scripts]
+gcs-run-inference = "geometric_complexity_scaling.cli:run_inference_main"
+gcs-backfill-incorrect-activations = "geometric_complexity_scaling.cli:backfill_incorrect_activations_main"
+gcs-compute-metrics = "geometric_complexity_scaling.cli:compute_metrics_main"
+gcs-plot-results = "geometric_complexity_scaling.cli:plot_results_main"
+gcs-run-all = "geometric_complexity_scaling.cli:run_all_main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

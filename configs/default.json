@@ -1,0 +1,17 @@
+{
+  "model_id": "google/gemma-4-E2B-it",
+  "tasks": ["fact", "sentiment", "math"],
+  "seeds": [0, 1, 2],
+  "sample_size": 2000,
+  "max_new_tokens": {
+    "fact": 32,
+    "sentiment": 8,
+    "math": 256
+  },
+  "system_prompt": "You are a helpful assistant.",
+  "max_correct_geometry": null,
+  "geometry_dtype": "float16",
+  "pca_components": 10,
+  "neighbors": 12,
+  "semantic_vocab_sample": 256
+}

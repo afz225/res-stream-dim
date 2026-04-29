@@ -1,0 +1,16 @@
+.conda-env/
+.codex
+.codex/
+outputs/
+slurm/logs/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+.DS_Store
+ml813_project_abstract.pdf
