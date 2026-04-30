@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .aggregate import aggregate_inference, combine_metric_csvs
 from .backfill import backfill_incorrect_activations_for_task
+from .custom_math import run_custom_math_pca_trajectory
 from .geometry import compute_metrics_for_activation_file
 from .inference import run_inference_for_task
 from .plotting import plot_results, plot_trajectory_dr
@@ -118,6 +119,60 @@ def plot_trajectory_dr_main(argv: list[str] | None = None) -> None:
         random_seed=args.random_seed,
         isomap_neighbors=args.isomap_neighbors,
         normalize_layers=not args.no_layer_normalize,
+    )
+
+
+def custom_math_pca_trajectory_main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Run a model on GSM8K-like data and plot PCA residual-stream trajectories colored by correctness."
+    )
+    parser.add_argument("--model-id", required=True)
+    source = parser.add_mutually_exclusive_group(required=True)
+    source.add_argument("--data-file", default=None)
+    source.add_argument("--dataset-name", default=None)
+    parser.add_argument("--dataset-config", default=None)
+    parser.add_argument("--split", default="train")
+    parser.add_argument("--question-column", default="question")
+    parser.add_argument("--answer-column", default="answer")
+    parser.add_argument("--row-id-column", default=None)
+    parser.add_argument("--output-dir", default="outputs/custom_math")
+    parser.add_argument("--sample-size", type=int, default=200)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--max-new-tokens", type=int, default=256)
+    parser.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
+    parser.add_argument("--device-map", default="auto")
+    parser.add_argument("--geometry-dtype", default="float16", choices=["float16", "float32"])
+    parser.add_argument("--max-per-group", type=int, default=75)
+    parser.add_argument("--no-layer-normalize", action="store_true")
+    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--hf-home", default=None)
+    parser.add_argument("--datasets-cache", default=None)
+    parser.add_argument("--transformers-cache", default=None)
+    parser.add_argument("--mpl-cache", default=None)
+    args = parser.parse_args(argv)
+    run_custom_math_pca_trajectory(
+        output_dir=args.output_dir,
+        model_id=args.model_id,
+        data_file=args.data_file,
+        dataset_name=args.dataset_name,
+        dataset_config=args.dataset_config,
+        split=args.split,
+        question_column=args.question_column,
+        answer_column=args.answer_column,
+        row_id_column=args.row_id_column,
+        sample_size=args.sample_size,
+        seed=args.seed,
+        max_new_tokens=args.max_new_tokens,
+        dtype=args.dtype,
+        device_map=args.device_map,
+        geometry_dtype=args.geometry_dtype,
+        max_per_group=args.max_per_group,
+        normalize_layers=not args.no_layer_normalize,
+        overwrite=args.overwrite,
+        hf_home=args.hf_home,
+        datasets_cache=args.datasets_cache,
+        transformers_cache=args.transformers_cache,
+        mpl_cache=args.mpl_cache,
     )
 
 

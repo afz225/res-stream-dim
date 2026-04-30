@@ -86,6 +86,39 @@ def plot_trajectory_dr(
     return written
 
 
+def plot_custom_pca_trajectory(
+    activation_path: str | Path,
+    output_dir: str | Path,
+    plot_name: str = "custom_math",
+    max_per_group: int = 75,
+    random_seed: int = 0,
+    normalize_layers: bool = True,
+) -> Path:
+    decomposition = require_import("sklearn.decomposition", "scikit-learn")
+    output_dir = Path(output_dir)
+    os.environ.setdefault("MPLCONFIGDIR", str(ensure_dir(output_dir / ".matplotlib")))
+    require_import("matplotlib", "matplotlib")
+    import matplotlib.pyplot as plt
+
+    payload = np.load(activation_path, allow_pickle=True)
+    activations = payload["activations"].astype(np.float32)
+    labels = _labels_from_activation_payload(payload)
+    trajectories, labels = _subsample_trajectories_by_label(activations, labels, max_per_group, random_seed)
+    plot_dir = ensure_dir(output_dir / "plots")
+    output_path = plot_dir / f"{plot_name}_trajectory_pca_correctness.png"
+    _plot_single_pca_trajectory(
+        trajectories=trajectories,
+        labels=labels,
+        output_path=output_path,
+        title=f"{plot_name} residual-stream layer trajectories (PCA, layer-normalized)",
+        PCA=decomposition.PCA,
+        plt=plt,
+        random_seed=random_seed,
+        normalize_layers=normalize_layers,
+    )
+    return output_path
+
+
 def _barplot(df, y_col, title, output_path, sns, plt):
     plt.figure(figsize=(7, 4))
     sns.barplot(data=df, x="task", y=y_col, errorbar="sd")
@@ -175,6 +208,44 @@ def _plot_trajectory_method(
     plt.close(fig)
 
 
+def _plot_single_pca_trajectory(
+    trajectories,
+    labels,
+    output_path,
+    title,
+    PCA,
+    plt,
+    random_seed,
+    normalize_layers,
+):
+    fig, axis = plt.subplots(1, 1, figsize=(7, 6))
+    colors = {"correct": "#14833b", "incorrect": "#c9342f"}
+    if trajectories.size == 0:
+        axis.set_title("No activations")
+        axis.axis("off")
+    else:
+        if normalize_layers:
+            trajectories = _layer_normalize(trajectories)
+        n_examples, n_layers, hidden_dim = trajectories.shape
+        states = trajectories.reshape(n_examples * n_layers, hidden_dim)
+        embedding = PCA(n_components=2, random_state=random_seed).fit_transform(states)
+        projected = embedding.reshape(n_examples, n_layers, 2)
+        _draw_trajectories(axis, projected, labels, colors)
+        axis.set_title(title)
+        axis.set_xlabel("PCA 1")
+        axis.set_ylabel("PCA 2")
+    handles = [
+        plt.Line2D([0], [0], color=colors["correct"], lw=2, label="correct"),
+        plt.Line2D([0], [0], color=colors["incorrect"], lw=2, label="incorrect"),
+        plt.Line2D([0], [0], marker="o", color="black", lw=0, markersize=5, label="start"),
+        plt.Line2D([0], [0], marker="s", color="black", lw=0, markersize=5, label="end"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+    fig.savefig(output_path, dpi=220)
+    plt.close(fig)
+
+
 def _load_subsampled_task_trajectories(output_dir, task, max_per_group, rng):
     activation_dir = Path(output_dir) / "activations"
     trajectories = []
@@ -196,6 +267,37 @@ def _load_subsampled_task_trajectories(output_dir, task, max_per_group, rng):
     if not trajectories:
         return np.empty((0, 0, 0), dtype=np.float32), []
     return np.concatenate(trajectories, axis=0), labels
+
+
+def _labels_from_activation_payload(payload) -> list[str]:
+    if "outcome_group" in payload:
+        values = payload["outcome_group"]
+        if np.ndim(values) == 0:
+            return [str(values)] * int(payload["activations"].shape[0])
+        return [str(value) for value in values.tolist()]
+    if "correct" in payload:
+        return ["correct" if bool(value) else "incorrect" for value in payload["correct"].tolist()]
+    return ["unknown"] * int(payload["activations"].shape[0])
+
+
+def _subsample_trajectories_by_label(activations, labels, max_per_group, random_seed):
+    if activations.ndim != 3 or activations.shape[0] == 0:
+        return np.empty((0, 0, 0), dtype=np.float32), []
+    rng = np.random.default_rng(random_seed)
+    selected_arrays = []
+    selected_labels = []
+    label_array = np.array(labels)
+    for label in ("correct", "incorrect"):
+        indices = np.flatnonzero(label_array == label)
+        if indices.size == 0:
+            continue
+        count = min(max_per_group, indices.size)
+        chosen = rng.choice(indices, size=count, replace=False)
+        selected_arrays.append(activations[chosen])
+        selected_labels.extend([label] * count)
+    if not selected_arrays:
+        return np.empty((0, 0, 0), dtype=np.float32), []
+    return np.concatenate(selected_arrays, axis=0), selected_labels
 
 
 def _layer_normalize(trajectories):
